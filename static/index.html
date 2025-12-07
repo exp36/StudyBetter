@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>StudyBetter</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="/static/styles.css">
+
+</head>
+
+<body>
+  <div class="app-container">
+    <div class="top-header">
+      <div class="header-logo">
+        <i class="fa-solid fa-book-open" style="font-size: 2rem; color: var(--primary);"></i>
+        <h1 style="margin: 0;">StudyBetter</h1>
+      </div>
+    
+    </div>
+    <div class="main-body">
+      <aside class="sidebar">
+        <div class="upload-section">
+          <h3 class="upload-section-title">Upload File</h3>
+          <div class="upload-box" id="drop-zone">
+            <div class="upload-icon">
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+            </div>
+            <div class="upload-title">
+              Click to Upload File
+            </div>
+            <div class="upload-subtext">
+              .txt (Max 50MB)
+            </div>
+            <input type="file" id="file-input" style="display:none;" accept=".txt" />
+          </div>
+          <div class="current-file" id="current-file">No file selected</div>
+        </div>
+        <div class="tools-section">
+          <div class="section-label">Ai Tools</div>
+          <div class="tools-grid">
+            <div class="tool-pill" onclick="selectTool(this, 'Question')" id="generate-btn">
+              <i class="fa-solid fa-align-left"></i> Question
+            </div>
+            <div class="tool-pill" onclick="selectTool(this, 'Summary')" id="generate-sum">
+              <i class="fa-solid fa-layer-group"></i> Summary
+            </div>
+            <div class="tool-pill" onclick="selectTool(this, 'Definition')" id="generate-def">
+              <i class="fa-solid fa-circle-question"></i> Definition
+            </div>
+            <div class="tool-pill" onclick="selectTool(this, 'Simplify')" id="generate-simplification">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Simplify
+            </div>
+          </div>
+        </div>
+      </aside>
+      <main class="content-area">
+        <div class="content-header">
+          <h1 id="page-title">Dashboard</h1>
+          <p id="page-subtitle"> Select a tool or upload a file to get started.</p>
+        </div>
+        <div class="content-display">
+          <div class="placeholder-card" id="main-card">
+            <div class="placeholder-icon">
+              <i class="fa-regular fa-file"></i>
+            </div>
+            <div class="placeholder-text">
+              Please <strong>upload a document</strong><br>
+
+            </div>
+            <div class="loading-spinner" id="loading" style="display: none;">
+              <div class="spinner"></div>
+              <p>Generating...</p>
+            </div>
+
+          </div>
+          <div id="output" class="output-content">Output</div>
+          <div class="output-actions">
+            <button class="btn-action" onclick="copyToClipboard()" id="copy-btn">
+              <i class="fa-solid fa-copy"></i> Copy
+            </button>
+            <button class="btn-action" onclick="downloadOutput()" id="download-btn">
+              <i class="fa-solid fa-download"></i> Download
+            </button>
+          </div>
+          <div class="status" id="status"></div>
+        </div>
+      </main>
+    </div>
+
+
+
+  </div>
+
+  <script>
+    // Element references
+    const btn = document.getElementById("generate-btn");
+    const btn2 = document.getElementById("generate-def");
+    const btn3 = document.getElementById("generate-sum");
+    const btn4 = document.getElementById("generate-simplification");
+    const fileInput = document.getElementById("file-input");
+
+    const output = document.getElementById("output");
+    const statusEl = document.getElementById("status");
+
+    function showToast(msg) {
+      alert(msg);
+    }
+
+
+
+
+    function disableAllButtons() {
+      const pills = document.querySelectorAll('.tool-pill');
+      pills.forEach(p => {
+        p.style.opacity = "0.5";
+        p.style.cursor = "not-allowed";
+        p.style.pointerEvents = "none";
+      });
+    }
+
+    function enableAllButtons() {
+      const pills = document.querySelectorAll('.tool-pill');
+      pills.forEach(p => {
+        p.style.opacity = "1";
+        p.style.cursor = "pointer";
+        p.style.pointerEvents = "auto";
+      });
+    }
+
+    // Disable upload box
+    function disableUploadBox() {
+      const uploadBox = document.getElementById('drop-zone');
+      uploadBox.style.opacity = "0.5";
+      uploadBox.style.cursor = "not-allowed";
+      uploadBox.style.pointerEvents = "none";
+    }
+
+    // Enable upload box
+    function enableUploadBox() {
+      const uploadBox = document.getElementById('drop-zone');
+      uploadBox.style.opacity = "1";
+      uploadBox.style.cursor = "pointer";
+      uploadBox.style.pointerEvents = "auto";
+    }
+
+    // Show error in placeholder card
+    function showError(errorMessage) {
+      document.getElementById('main-card').style.display = "flex";
+      document.querySelector('.placeholder-icon').style.display = "block";
+      document.querySelector('.placeholder-text').style.display = "block";
+      document.querySelector('.placeholder-text').innerHTML = errorMessage;
+      document.getElementById('loading').style.display = "none";
+      output.style.display = "none";
+      document.querySelector('.output-actions').classList.remove('visible');
+      statusEl.textContent = "";
+      document.getElementById('current-file').textContent = "No file selected";
+      disableAllButtons();
+    }
+
+    // Initialize with buttons disabled
+    disableAllButtons();
+
+    // Tool Selection Logic
+    function selectTool(element, toolName) {
+      // Remove active class from all pills
+      document.querySelectorAll('.tool-pill').forEach(el => el.classList.remove('active'));
+      // Add to clicked
+      element.classList.add('active');
+
+      // Update Header and Card
+      document.getElementById('page-title').innerText = toolName;
+      document.getElementById('page-subtitle').innerText = `Using AI to generate ${toolName.toLowerCase()}.`;
+
+      // Show placeholder card, hide output and loading
+      document.getElementById('main-card').style.display = "flex";
+      output.style.display = "none";
+      document.getElementById('loading').style.display = "none";
+      document.querySelector('.output-actions').classList.remove('visible');
+      document.querySelector('.placeholder-icon').style.display = "block";
+      document.querySelector('.placeholder-text').style.display = "block";
+
+      const cardContent = document.querySelector('.placeholder-text');
+      if (cardContent) {
+        cardContent.innerHTML = `Waiting for input to generate <strong>${toolName}</strong>...`;
+      }
+    }
+    // Handle file upload
+    fileInput.addEventListener("change", async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      document.getElementById('main-card').style.display = "flex";
+      document.querySelector('.placeholder-icon').style.display = "none";
+      document.querySelector('.placeholder-text').style.display = "none";
+      document.getElementById('loading').style.display = "flex";
+      statusEl.textContent = "Uploading file...";
+
+      // Check file size (50MB = 50 * 1024 * 1024 bytes)
+      const maxFileSize = 50 * 1024 * 1024;
+      if (file.size > maxFileSize) {
+        showError(`<span style="color: #dc2626;">⚠️ File too large (${(file.size / (1024 * 1024)).toFixed(2)} MB)</span><br><br>Maximum allowed: <strong>50 MB</strong><br><br>Please upload a smaller .txt file.`);
+        return;
+      } else if (file.type !== "text/plain") {
+        showError(`<span style="color: #dc2626;">⚠️ Invalid file type</span><br><br>Only <strong>.txt files</strong> are supported.<br><br>Please upload a text file.`);
+        return;
+      }
+
+      try {
+        statusEl.textContent = "Uploading file...";
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          const errorMessage = errorData.error || "Upload failed";
+          throw new Error(errorMessage);
+        }
+
+        const data = await response.json();
+        statusEl.textContent = `File uploaded successfully (${data.size} characters)`;
+
+        document.getElementById('main-card').style.display = "flex";
+        document.getElementById('loading').style.display = "none";
+        document.querySelector('.placeholder-icon').style.display = "block";
+        document.querySelector('.placeholder-text').style.display = "block";
+        document.querySelector('.placeholder-text').innerHTML = `Now select a tool to generate <strong>questions, definitions, summaries, or simplifications</strong>.`;
+        output.style.display = "none";
+        document.querySelector('.output-actions').classList.remove('visible');
+
+        document.getElementById('current-file').textContent = `Current file: ${file.name}`;
+        enableAllButtons();
+      } catch (err) {
+        console.error(err);
+        const errorMsg = err.message;
+        let displayError = `<span style="color: #dc2626;">⚠️ Upload failed</span><br><br>${errorMsg}`;
+        showError(displayError);
+      }
+    });
+
+
+    const uploadBox = document.getElementById('drop-zone');
+    uploadBox.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+
+    async function generateContent(apiEndpoint, contentType, dataKey) {
+      try {
+        disableAllButtons();
+        disableUploadBox();
+        const loading = document.getElementById('loading');
+        const placeholderIcon = document.querySelector('.placeholder-icon');
+        const placeholderText = document.querySelector('.placeholder-text');
+
+        // Show loading spinner, hide icon and text
+        placeholderIcon.style.display = "none";
+        placeholderText.style.display = "none";
+        loading.style.display = "flex";
+        output.style.display = "none";
+        statusEl.textContent = `Generating ${contentType}...`;
+
+        const response = await fetch(apiEndpoint);
+        if (!response.ok) {
+          throw new Error("Server error: " + response.status);
+        }
+
+        const data = await response.json();
+        document.getElementById('main-card').style.display = "none";
+        loading.style.display = "none";
+        output.style.display = "block";
+        output.textContent = data[dataKey] || `No ${contentType} returned.`;
+        document.querySelector('.output-actions').classList.add('visible');
+        statusEl.textContent = "Done.";
+      } catch (err) {
+        console.error(err);
+        const loading = document.getElementById('loading');
+        const placeholderIcon = document.querySelector('.placeholder-icon');
+        const placeholderText = document.querySelector('.placeholder-text');
+
+        loading.style.display = "none";
+        placeholderIcon.style.display = "block";
+        placeholderText.style.display = "block";
+        statusEl.textContent = `Error generating ${contentType}. Check console / backend.`;
+        output.style.display = "block";
+        output.textContent = err.toString();
+      } finally {
+        enableAllButtons();
+        enableUploadBox();
+      }
+    }
+
+
+    function copyToClipboard() {
+      const output = document.getElementById('output');
+      const text = output.textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Output copied to clipboard!');
+      }).catch(() => {
+        alert('Failed to copy');
+      });
+    }
+
+
+    function downloadOutput() {
+      const output = document.getElementById('output');
+      const text = output.textContent;
+      const element = document.createElement('a');
+      element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+      element.setAttribute('download', 'output.txt');
+      element.style.display = 'none';
+      document.body.appendChild(element);
+      element.click();
+      document.body.removeChild(element);
+    }
+
+    btn.addEventListener("click", () => generateContent("/api/question", "question", "question"));
+    btn2.addEventListener("click", () => generateContent("/api/definition", "definition", "definition"));
+    btn3.addEventListener("click", () => generateContent("/api/summarization", "summary", "summarization"));
+    btn4.addEventListener("click", () => generateContent("/api/simplification", "simplification", "simplification"));
+  </script>
+</body>
+
+</html>
